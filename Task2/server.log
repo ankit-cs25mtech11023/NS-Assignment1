@@ -1,0 +1,6 @@
+[2026-02-11 19:14:54] REQUEST: LIST
+[2026-02-11 19:14:54] RESPONSE: client.py credentials.txt server.py
+[2026-02-11 19:15:02] REQUEST: GETSIZE server.py
+[2026-02-11 19:15:02] RESPONSE: 6893 bytes
+[2026-02-11 19:15:17] REQUEST: INFO credentials.txt
+[2026-02-11 19:15:17] RESPONSE: Size: 42 bytes, Perms: 664, Modified: 2026-02-11 19:11:56, Created: 2026-02-11 19:11:56

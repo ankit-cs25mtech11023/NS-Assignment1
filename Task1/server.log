@@ -1,0 +1,4 @@
+[2026-02-11 18:49:14] REQUEST: LIST
+[2026-02-11 18:49:14] RESPONSE: test.txt client.py server.py
+[2026-02-11 18:49:22] REQUEST: INFO test.txt
+[2026-02-11 18:49:22] RESPONSE: Size: 26 bytes, Permissions: rwx, Last Modified: 2026-02-11 18:30:34, Created: 2026-02-11 18:37:55
