@@ -4,3 +4,13 @@
 [2026-02-11 19:15:02] RESPONSE: 6893 bytes
 [2026-02-11 19:15:17] REQUEST: INFO credentials.txt
 [2026-02-11 19:15:17] RESPONSE: Size: 42 bytes, Perms: 664, Modified: 2026-02-11 19:11:56, Created: 2026-02-11 19:11:56
+[2026-02-13 15:10:54] REQUEST: QUIT
+[2026-02-13 15:10:54] RESPONSE: Connection Terminated
+[2026-02-13 15:22:44] REQUEST: LIST
+[2026-02-13 15:22:44] RESPONSE: client.py credentials.txt server.log server.py
+[2026-02-13 15:22:57] REQUEST: INFO credentials.txt
+[2026-02-13 15:22:57] RESPONSE: Size: 42 bytes, Perms: 664, Modified: 2026-02-13 10:30:31, Created: 2026-02-13 10:30:31
+[2026-02-13 15:23:07] REQUEST: QUIT
+[2026-02-13 15:23:07] RESPONSE: Connection Terminated
+[2026-02-13 15:28:47] REQUEST: QUIT
+[2026-02-13 15:28:47] RESPONSE: Connection Terminated

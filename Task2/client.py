@@ -15,6 +15,9 @@ def start_client():
     try:
         P_val = int(os.environ.get("P", "23")) # Default 23 for test
         G_val = int(os.environ.get("G", "5"))  # Default 5 for test
+
+        #VERIFY PARAMETERS
+        print(f"[DEBUG]Client loaded: P = {P_val}, G = {G_val}")
     except ValueError:
         print("Error: Environment variables P and G must be integers.")
         return

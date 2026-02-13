@@ -2,3 +2,15 @@
 [2026-02-11 18:49:14] RESPONSE: test.txt client.py server.py
 [2026-02-11 18:49:22] REQUEST: INFO test.txt
 [2026-02-11 18:49:22] RESPONSE: Size: 26 bytes, Permissions: rwx, Last Modified: 2026-02-11 18:30:34, Created: 2026-02-11 18:37:55
+[2026-02-13 14:42:19] REQUEST: LIST
+[2026-02-13 14:42:19] RESPONSE: client.py test.txt server.log server.py
+[2026-02-13 14:42:28] REQUEST: INFO test.txt
+[2026-02-13 14:42:28] RESPONSE: Size: 26 bytes, Permissions: rwx, Last Modified: 2026-02-13 10:30:31, Created: 2026-02-13 10:30:31
+[2026-02-13 14:42:44] REQUEST: GETSIZE test.txt
+[2026-02-13 14:42:44] RESPONSE: 26 bytes
+[2026-02-13 14:42:52] REQUEST: GETSITE client.py
+[2026-02-13 14:42:52] RESPONSE: ERROR: Invalid Command
+[2026-02-13 14:43:01] REQUEST: GETSIZE client.py
+[2026-02-13 14:43:01] RESPONSE: 1238 bytes
+[2026-02-13 14:43:09] REQUEST: QUIT
+[2026-02-13 14:43:09] RESPONSE: Connection Terminated

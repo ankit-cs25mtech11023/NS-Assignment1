@@ -3,7 +3,7 @@ import threading
 import os
 import datetime
 import hashlib
-import secrets # For secure random nonce
+import secrets
 
 # Configuration
 HOST = '0.0.0.0'
@@ -11,20 +11,16 @@ PORT = 8080
 BUFFER_SIZE = 4096
 CREDENTIALS_FILE = "credentials.txt"
 LOG_FILE = "server.log"
+CHUNK_SIZE = 1024  # [cite: 82]
 
-# Global Variables
-# Stores blocked users: {username: True}
+# Global Locks & Storage
 blocked_users = {} 
-# Stores login attempts: {username: count}
 login_attempts = {}
-# Lock for thread-safe logging and variable access
 print_lock = threading.Lock()
 auth_lock = threading.Lock()
 
 def log_event(command, response):
-    """Logs requests and responses to server.log with timestamp."""
     timestamp = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
-    # Log full response as requested
     with print_lock:
         with open(LOG_FILE, "a") as f:
             f.write(f"{timestamp} REQUEST: {command}\n")
@@ -40,25 +36,76 @@ def load_credentials():
                     creds[user] = secret
     return creds
 
-def handle_client(client_socket, addr):
+def calculate_mac(data, seq_no, session_key):
     """
-    Handles a single client connection in a separate thread.
-    Performs Authentication -> DH Key Exchange -> Command Processing
+    Computes MAC = HASH(DATA || SEQ_NO || SESSION_KEY) [cite: 87]
     """
-    print(f"[NEW CONNECTION] {addr} connected.")
+    # Convert seq_no and key to bytes for concatenation
+    seq_bytes = str(seq_no).encode('utf-8')
+    key_bytes = str(session_key).encode('utf-8')
     
+    # payload = DATA + SEQ_NO + SESSION_KEY
+    payload = data + seq_bytes + key_bytes
+    return hashlib.sha256(payload).hexdigest()
+
+def handle_get_command(client_socket, filename, session_key):
+    """
+    Handles the file download process (Server sends to Client).
+    """
+    if not os.path.exists(filename):
+        client_socket.sendall("FILE NOT AVAILABLE".encode()) # [cite: 79]
+        return "FILE NOT AVAILABLE"
+
+    # 1. Send File Existence confirmation
+    file_size = os.path.getsize(filename)
+    client_socket.sendall(f"FILE_FOUND {file_size}".encode())
+    
+    # Wait briefly for client to be ready (optional but good for stability)
+    # In a production app we'd wait for an ACK, but here we stream.
+    
+    seq_no = 0
+    with open(filename, 'rb') as f:
+        while True:
+            # 2. Read Chunk [cite: 82]
+            chunk = f.read(CHUNK_SIZE)
+            if not chunk:
+                break
+            
+            # 3. Calculate MAC [cite: 87]
+            mac = calculate_mac(chunk, seq_no, session_key)
+            
+            # 4. Construct Packet
+            # format: SEQ_NO(4 bytes) + DATA_LEN(4 bytes) + DATA + MAC(64 bytes)
+            # We need a robust binary format to handle variable data size
+            
+            # Protocol Header: 8 bytes total (4 for SEQ, 4 for LEN)
+            header = seq_no.to_bytes(4, byteorder='big') + len(chunk).to_bytes(4, byteorder='big')
+            mac_bytes = mac.encode('utf-8') # 64 bytes fixed
+            
+            packet = header + chunk + mac_bytes
+            
+            # 5. Send Packet
+            client_socket.sendall(packet)
+            seq_no += 1
+            
+    # Send End of Transmission indicator
+    # We send a special packet with 0 length data to indicate done
+    end_header = seq_no.to_bytes(4, byteorder='big') + (0).to_bytes(4, byteorder='big')
+    # Dummy MAC for the EOF packet (client will likely ignore, but consistent format helps)
+    dummy_mac = calculate_mac(b"", seq_no, session_key).encode('utf-8')
+    client_socket.sendall(end_header + dummy_mac)
+    
+    return f"File {filename} sent ({file_size} bytes)"
+
+def handle_client(client_socket, addr):
+    print(f"[NEW CONNECTION] {addr} connected.")
     session_key = None
     username = None
     
     try:
-        # ==========================================
-        # PHASE 1: AUTHENTICATION & KEY EXCHANGE
-        # ==========================================
-        
-        # 1. Receive Username
+        # --- PHASE 1: AUTH ---
         username = client_socket.recv(BUFFER_SIZE).decode().strip()
         
-        # Check Lockout Policy 
         with auth_lock:
             if username in blocked_users:
                 client_socket.sendall("AUTH_FAIL: Account Blocked".encode())
@@ -67,38 +114,27 @@ def handle_client(client_socket, addr):
 
         creds = load_credentials()
         if username not in creds:
-            # Fake auth to prevent username enumeration (optional security practice)
-            # For this assignment, we'll just fail.
             client_socket.sendall("AUTH_FAIL: Invalid User".encode())
             client_socket.close()
             return
 
         shared_secret = creds[username]
-
-        # 2. Server generates and sends random nonce [cite: 56]
         nonce = str(secrets.randbits(64))
         client_socket.sendall(nonce.encode())
-
-        # 3. Receive Hash from Client
+        
         client_hash = client_socket.recv(BUFFER_SIZE).decode().strip()
-
-        # 4. Verify Hash: HASH(nonce || shared_secret) [cite: 57]
         expected_str = nonce + shared_secret
         expected_hash = hashlib.sha256(expected_str.encode()).hexdigest()
 
         if client_hash == expected_hash:
             client_socket.sendall("AUTH_SUCCESS".encode())
-            # Reset attempts on success
             with auth_lock:
-                if username in login_attempts:
-                    del login_attempts[username]
+                if username in login_attempts: del login_attempts[username]
         else:
             msg = ""
-            # Handle Failed Attempt
             with auth_lock:
                 login_attempts[username] = login_attempts.get(username, 0) + 1
-                attempts = login_attempts[username]
-                if attempts >= 3:
+                if login_attempts[username] >= 3:
                     blocked_users[username] = True
                     msg = "AUTH_FAIL: Account Blocked"
                 else:
@@ -107,39 +143,26 @@ def handle_client(client_socket, addr):
             client_socket.close()
             return
 
-        # ==========================================
-        # PHASE 2: SESSION KEY (Diffie-Hellman) 
-        # ==========================================
-        
-        # Receive Client's P, G, and Public Key A
-        # Format: "P,G,A"
+        # --- PHASE 2: DH KEY EXCHANGE ---
         dh_data = client_socket.recv(BUFFER_SIZE).decode().strip()
         P_str, G_str, A_str = dh_data.split(',')
-        P = int(P_str)
-        G = int(G_str)
-        A = int(A_str)
+        P, G, A = int(P_str), int(G_str), int(A_str)
+        
+        # Verify inputs (optional debug)
+        print(f"[DEBUG] Server received: P={P}, G={G}") 
 
-        # Server generates private key b
         b = secrets.randbelow(P - 1) + 1
-        # Server computes Public Key B = (G^b) % P
         B = pow(G, b, P)
-
-        # Server computes Session Key = (A^b) % P
         session_int = pow(A, b, P)
-        session_key = str(session_int) # Store as string for now
+        session_key = str(session_int)
         
-        # Send Server's Public Key B to client
         client_socket.sendall(str(B).encode())
-        
         print(f"[SECURE] Session Key established for {username}.")
 
-        # ==========================================
-        # PHASE 3: COMMAND PROCESSING (Task 1 Logic)
-        # ==========================================
+        # --- PHASE 3: COMMANDS ---
         while True:
             data = client_socket.recv(BUFFER_SIZE)
-            if not data:
-                break
+            if not data: break
             
             command_line = data.decode('utf-8').strip()
             parts = command_line.split()
@@ -150,11 +173,12 @@ def handle_client(client_socket, addr):
             response = ""
 
             if cmd == "LIST":
-                # Re-using logic from Task 1 (inline for brevity)
                 try:
                     files = [f for f in os.listdir('.') if os.path.isfile(f)]
                     response = " ".join(files) if files else "Empty Directory"
-                except: response = "ERROR"
+                    client_socket.sendall(response.encode())
+                except: 
+                    client_socket.sendall("ERROR".encode())
             
             elif cmd == "INFO" and arg:
                  if os.path.exists(arg):
@@ -163,19 +187,27 @@ def handle_client(client_socket, addr):
                     ctime = datetime.datetime.fromtimestamp(st.st_ctime).strftime('%Y-%m-%d %H:%M:%S')
                     response = f"Size: {st.st_size} bytes, Perms: {oct(st.st_mode)[-3:]}, Modified: {mtime}, Created: {ctime}"
                  else: response = "ERROR: File not found"
+                 client_socket.sendall(response.encode())
 
             elif cmd == "GETSIZE" and arg:
                 if os.path.exists(arg): response = f"{os.path.getsize(arg)} bytes"
                 else: response = "ERROR: File not found"
+                client_socket.sendall(response.encode())
+
+            elif cmd == "GET" and arg:
+                # Task 3: Handle File Download
+                response = handle_get_command(client_socket, arg, session_key)
+                # Note: handle_get_command does its own sending, so we don't sendall here
+                # We just log the result
 
             elif cmd == "QUIT":
                 log_event(command_line, "Connection Terminated")
                 break
             else:
                 response = "ERROR: Invalid Command"
+                client_socket.sendall(response.encode())
 
             log_event(command_line, response)
-            client_socket.sendall(response.encode('utf-8'))
 
     except Exception as e:
         print(f"[ERROR] {addr}: {e}")
@@ -191,10 +223,8 @@ def start_server():
 
     while True:
         conn, addr = server.accept()
-        # Create a new thread for each client 
         thread = threading.Thread(target=handle_client, args=(conn, addr))
         thread.start()
-        print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 1}")
 
 if __name__ == "__main__":
     start_server()

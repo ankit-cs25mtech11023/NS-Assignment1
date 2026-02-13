@@ -1,0 +1,22 @@
+[2026-02-13 16:09:29] REQUEST: LIST
+[2026-02-13 16:09:29] RESPONSE: client.py credentials.txt server.py
+[2026-02-13 16:09:49] REQUEST: LIST
+[2026-02-13 16:09:49] RESPONSE: client.py credentials.txt test.txt server.log server.py
+[2026-02-13 16:10:07] REQUEST: LIST
+[2026-02-13 16:10:07] RESPONSE: client.py credentials.txt test.txt server.log server.py
+[2026-02-13 16:10:13] REQUEST: INFO test.txt
+[2026-02-13 16:10:13] RESPONSE: Size: 13 bytes, Perms: 664, Modified: 2026-02-13 16:10:03, Created: 2026-02-13 16:10:03
+[2026-02-13 16:10:25] REQUEST: GET test.txt
+[2026-02-13 16:10:25] RESPONSE: File test.txt sent (13 bytes)
+[2026-02-13 16:10:38] REQUEST: QUIT
+[2026-02-13 16:10:38] RESPONSE: Connection Terminated
+[2026-02-13 16:20:23] REQUEST: LIST
+[2026-02-13 16:20:23] RESPONSE: downloaded_test.txt client.py credentials.txt test.txt server.log server.py
+[2026-02-13 16:20:30] REQUEST: GET test.txt
+[2026-02-13 16:20:30] RESPONSE: File test.txt sent (13 bytes)
+[2026-02-13 16:20:35] REQUEST: QUIT
+[2026-02-13 16:20:35] RESPONSE: Connection Terminated
+[2026-02-13 16:21:01] REQUEST: GET test.txt
+[2026-02-13 16:21:01] RESPONSE: File test.txt sent (13 bytes)
+[2026-02-13 16:21:08] REQUEST: QUIT
+[2026-02-13 16:21:08] RESPONSE: Connection Terminated

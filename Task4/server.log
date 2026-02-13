@@ -1,0 +1,6 @@
+[2026-02-13 17:32:55] REQUEST: LIST
+[2026-02-13 17:32:55] RESPONSE: client.py credentials.txt test_file.txt test.txt server.py
+[2026-02-13 17:33:32] REQUEST: GET test_file.txt
+[2026-02-13 17:33:32] RESPONSE: File test_file.txt sent (4585 bytes)
+[2026-02-13 17:33:50] REQUEST: QUIT
+[2026-02-13 17:33:50] RESPONSE: Connection Terminated
