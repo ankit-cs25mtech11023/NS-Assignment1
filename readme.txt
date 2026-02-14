@@ -108,6 +108,3 @@ Technical References:
 4. PyCryptodome Documentation (AES CBC Mode):
    https://pycryptodome.readthedocs.io/en/latest/src/cipher/classic.html#cbc-mode
 
-Course Materials:
-5. Course Slides: CS6903 Network Security - Cryptography and Secure Communication.
-6. RFC 3526: Modular Exponential (MODP) Diffie-Hellman groups.
