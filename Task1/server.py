@@ -11,7 +11,7 @@ BUFFER_SIZE = 4096
 LOG_FILE = "server.log"
  
 def log_event(command, response):
-    """Logs requests and responses to server.log with timestamp."""
+    #Logs requests and responses to server.log with timestamp.
     timestamp = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
     
     log_resp = response
@@ -21,7 +21,7 @@ def log_event(command, response):
         f.write(f"{timestamp} RESPONSE: {log_resp}\n")
 
 def handle_list():
-    """Returns a space-separated list of files in the current directory."""
+    #Returns a space-separated list of files in the current directory.
     try:
         files = [f for f in os.listdir('.') if os.path.isfile(f)]
         return " ".join(files) if files else "Empty Directory"
@@ -29,7 +29,7 @@ def handle_list():
         return f"ERROR: {str(e)}"
 
 def handle_info(filename):
-    """Returns file size, permissions, last modified, and creation time."""
+    #Returns file size, permissions, last modified, and creation time.
     if not os.path.exists(filename):
         return "ERROR: File not found"
     
@@ -55,7 +55,7 @@ def handle_info(filename):
         return f"ERROR: {str(e)}"
 
 def handle_getsize(filename):
-    """Returns the size of the file in bytes."""
+    #Returns the size of the file in bytes.
     if not os.path.exists(filename):
         return "ERROR: File not found"
     return f"{os.path.getsize(filename)} bytes"

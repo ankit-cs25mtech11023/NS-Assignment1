@@ -4,3 +4,9 @@
 [2026-02-13 17:33:32] RESPONSE: File test_file.txt sent (4585 bytes)
 [2026-02-13 17:33:50] REQUEST: QUIT
 [2026-02-13 17:33:50] RESPONSE: Connection Terminated
+[2026-02-14 21:07:15] REQUEST: LIST
+[2026-02-14 21:07:15] RESPONSE: test.txt client.py server.log credentials.txt server.py downloaded_test_file.txt test_file.txt
+[2026-02-14 21:07:40] REQUEST: GET test.txt
+[2026-02-14 21:07:40] RESPONSE: File test.txt sent (13 bytes)
+[2026-02-14 21:07:46] REQUEST: QUIT
+[2026-02-14 21:07:46] RESPONSE: Connection Terminated

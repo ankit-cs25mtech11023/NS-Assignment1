@@ -20,3 +20,7 @@
 [2026-02-13 16:21:01] RESPONSE: File test.txt sent (13 bytes)
 [2026-02-13 16:21:08] REQUEST: QUIT
 [2026-02-13 16:21:08] RESPONSE: Connection Terminated
+[2026-02-14 22:03:29] REQUEST: LIST
+[2026-02-14 22:03:29] RESPONSE: test.txt client.py server.log credentials.txt server.py
+[2026-02-14 22:04:03] REQUEST: GET test.txt
+[2026-02-14 22:04:03] RESPONSE: File test.txt sent (13 bytes)
