@@ -11,7 +11,7 @@ PORT = 8080
 BUFFER_SIZE = 4096
 CREDENTIALS_FILE = "credentials.txt"
 LOG_FILE = "server.log"
-CHUNK_SIZE = 1024  # [cite: 82]
+CHUNK_SIZE = 1024 
 
 # Global Locks & Storage
 blocked_users = {} 
@@ -37,9 +37,8 @@ def load_credentials():
     return creds
 
 def calculate_mac(data, seq_no, session_key):
-    """
-    Computes MAC = HASH(DATA || SEQ_NO || SESSION_KEY) [cite: 87]
-    """
+    #Compute MAC = HASH(DATA || SEQ_NO || SESSION_KEY)
+
     # Convert seq_no and key to bytes for concatenation
     seq_bytes = str(seq_no).encode('utf-8')
     key_bytes = str(session_key).encode('utf-8')
@@ -49,34 +48,28 @@ def calculate_mac(data, seq_no, session_key):
     return hashlib.sha256(payload).hexdigest()
 
 def handle_get_command(client_socket, filename, session_key):
-    """
-    Handles the file download process (Server sends to Client).
-    """
+    #Handles the file download process (Server sends to Client).
+
     if not os.path.exists(filename):
-        client_socket.sendall("FILE NOT AVAILABLE".encode()) # [cite: 79]
+        client_socket.sendall("FILE NOT AVAILABLE".encode())
         return "FILE NOT AVAILABLE"
 
     # 1. Send File Existence confirmation
     file_size = os.path.getsize(filename)
     client_socket.sendall(f"FILE_FOUND {file_size}".encode())
-    
-    # Wait briefly for client to be ready (optional but good for stability)
-    # In a production app we'd wait for an ACK, but here we stream.
-    
+     
     seq_no = 0
     with open(filename, 'rb') as f:
         while True:
-            # 2. Read Chunk [cite: 82]
+            # 2. Read Chunk
             chunk = f.read(CHUNK_SIZE)
             if not chunk:
                 break
             
-            # 3. Calculate MAC [cite: 87]
+            # 3. Calculate MAC
             mac = calculate_mac(chunk, seq_no, session_key)
             
-            # 4. Construct Packet
-            # format: SEQ_NO(4 bytes) + DATA_LEN(4 bytes) + DATA + MAC(64 bytes)
-            # We need a robust binary format to handle variable data size
+            # 4. Construct Packet -- SEQ_NO(4 bytes) + DATA_LEN(4 bytes) + DATA + MAC(64 bytes)
             
             # Protocol Header: 8 bytes total (4 for SEQ, 4 for LEN)
             header = seq_no.to_bytes(4, byteorder='big') + len(chunk).to_bytes(4, byteorder='big')
@@ -88,10 +81,10 @@ def handle_get_command(client_socket, filename, session_key):
             client_socket.sendall(packet)
             seq_no += 1
             
-    # Send End of Transmission indicator
-    # We send a special packet with 0 length data to indicate done
+    # Send End of Transmission indicator , we send a special packet with 0 length data to indicate done
     end_header = seq_no.to_bytes(4, byteorder='big') + (0).to_bytes(4, byteorder='big')
-    # Dummy MAC for the EOF packet (client will likely ignore, but consistent format helps)
+    
+    # Dummy MAC for the EOF packet
     dummy_mac = calculate_mac(b"", seq_no, session_key).encode('utf-8')
     client_socket.sendall(end_header + dummy_mac)
     
@@ -103,7 +96,7 @@ def handle_client(client_socket, addr):
     username = None
     
     try:
-        # --- PHASE 1: AUTH ---
+        #auth
         username = client_socket.recv(BUFFER_SIZE).decode().strip()
         
         with auth_lock:
@@ -143,12 +136,12 @@ def handle_client(client_socket, addr):
             client_socket.close()
             return
 
-        # --- PHASE 2: DH KEY EXCHANGE ---
+        #DH Key exhange
         dh_data = client_socket.recv(BUFFER_SIZE).decode().strip()
         P_str, G_str, A_str = dh_data.split(',')
         P, G, A = int(P_str), int(G_str), int(A_str)
         
-        # Verify inputs (optional debug)
+        #Verify inputs
         print(f"[DEBUG] Server received: P={P}, G={G}") 
 
         b = secrets.randbelow(P - 1) + 1
@@ -159,7 +152,7 @@ def handle_client(client_socket, addr):
         client_socket.sendall(str(B).encode())
         print(f"[SECURE] Session Key established for {username}.")
 
-        # --- PHASE 3: COMMANDS ---
+        # COMMANDS
         while True:
             data = client_socket.recv(BUFFER_SIZE)
             if not data: break
@@ -195,10 +188,8 @@ def handle_client(client_socket, addr):
                 client_socket.sendall(response.encode())
 
             elif cmd == "GET" and arg:
-                # Task 3: Handle File Download
+                #Handle File Download
                 response = handle_get_command(client_socket, arg, session_key)
-                # Note: handle_get_command does its own sending, so we don't sendall here
-                # We just log the result
 
             elif cmd == "QUIT":
                 log_event(command_line, "Connection Terminated")

@@ -13,10 +13,10 @@ CREDENTIALS_FILE = "credentials.txt"
 LOG_FILE = "server.log"
 
 # Global Variables
-# Stores blocked users: {username: True}
+
 blocked_users = {} 
-# Stores login attempts: {username: count}
 login_attempts = {}
+
 # Lock for thread-safe logging and variable access
 print_lock = threading.Lock()
 auth_lock = threading.Lock()
@@ -24,7 +24,6 @@ auth_lock = threading.Lock()
 def log_event(command, response):
     """Logs requests and responses to server.log with timestamp."""
     timestamp = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
-    # Log full response as requested
     with print_lock:
         with open(LOG_FILE, "a") as f:
             f.write(f"{timestamp} REQUEST: {command}\n")
@@ -41,20 +40,14 @@ def load_credentials():
     return creds
 
 def handle_client(client_socket, addr):
-    """
-    Handles a single client connection in a separate thread.
-    Performs Authentication -> DH Key Exchange -> Command Processing
-    """
+    
+    #Handle a single client connection in a separate thread.
     print(f"[NEW CONNECTION] {addr} connected.")
     
     session_key = None
     username = None
     
-    try:
-        # ==========================================
-        # PHASE 1: AUTHENTICATION & KEY EXCHANGE
-        # ==========================================
-        
+    try: 
         # 1. Receive Username
         username = client_socket.recv(BUFFER_SIZE).decode().strip()
         
@@ -67,22 +60,21 @@ def handle_client(client_socket, addr):
 
         creds = load_credentials()
         if username not in creds:
-            # Fake auth to prevent username enumeration (optional security practice)
-            # For this assignment, we'll just fail.
+            # Fake auth to prevent username enumeration
             client_socket.sendall("AUTH_FAIL: Invalid User".encode())
             client_socket.close()
             return
 
         shared_secret = creds[username]
 
-        # 2. Server generates and sends random nonce [cite: 56]
+        # 2. Server generates and sends random nonce
         nonce = str(secrets.randbits(64))
         client_socket.sendall(nonce.encode())
 
         # 3. Receive Hash from Client
         client_hash = client_socket.recv(BUFFER_SIZE).decode().strip()
 
-        # 4. Verify Hash: HASH(nonce || shared_secret) [cite: 57]
+        # 4. Verify Hash: HASH(nonce || shared_secret)
         expected_str = nonce + shared_secret
         expected_hash = hashlib.sha256(expected_str.encode()).hexdigest()
 
@@ -107,12 +99,7 @@ def handle_client(client_socket, addr):
             client_socket.close()
             return
 
-        # ==========================================
-        # PHASE 2: SESSION KEY (Diffie-Hellman) 
-        # ==========================================
-        
         # Receive Client's P, G, and Public Key A
-        # Format: "P,G,A"
         dh_data = client_socket.recv(BUFFER_SIZE).decode().strip()
         P_str, G_str, A_str = dh_data.split(',')
         P = int(P_str)
@@ -133,9 +120,6 @@ def handle_client(client_socket, addr):
         
         print(f"[SECURE] Session Key established for {username}.")
 
-        # ==========================================
-        # PHASE 3: COMMAND PROCESSING (Task 1 Logic)
-        # ==========================================
         while True:
             data = client_socket.recv(BUFFER_SIZE)
             if not data:
@@ -150,7 +134,7 @@ def handle_client(client_socket, addr):
             response = ""
 
             if cmd == "LIST":
-                # Re-using logic from Task 1 (inline for brevity)
+                # Re-using logic from Task 1
                 try:
                     files = [f for f in os.listdir('.') if os.path.isfile(f)]
                     response = " ".join(files) if files else "Empty Directory"

@@ -11,7 +11,6 @@ BUFFER_SIZE = 4096
 
 def start_client():
     # 1. Read Diffie-Hellman Parameters from Environment 
-    # If not set, we default to small primes for testing (Assignment requires Env Vars)
     try:
         P_val = int(os.environ.get("P", "23")) # Default 23 for test
         G_val = int(os.environ.get("G", "5"))  # Default 5 for test
@@ -24,18 +23,12 @@ def start_client():
 
     # 2. Get User Credentials
     username = input("Enter Username: ")
-    # In a real app, use getpass, but simple input is fine for this assignment
     password = input("Enter Shared Secret: ") 
 
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     
     try:
         client.connect((HOST, PORT))
-        
-        # ==========================================
-        # PHASE 1: AUTHENTICATION
-        # ==========================================
-        
         # 1. Send Username [cite: 55]
         client.sendall(username.encode())
         
@@ -45,7 +38,7 @@ def start_client():
             print(f"Server Response: {nonce}")
             return
 
-        # 3. Compute Hash: HASH(nonce || shared_secret) [cite: 57]
+        # 3. Compute Hash: HASH(nonce || shared_secret)
         expected_str = nonce + password
         auth_hash = hashlib.sha256(expected_str.encode()).hexdigest()
         
@@ -60,10 +53,6 @@ def start_client():
         
         print("Authentication Successful!")
 
-        # ==========================================
-        # PHASE 2: SESSION KEY (Diffie-Hellman) [cite: 65]
-        # ==========================================
-        
         # Client generates private key a
         a = secrets.randbelow(P_val - 1) + 1
         # Client computes Public Key A = (G^a) % P
@@ -84,9 +73,6 @@ def start_client():
         print(f"Session Key Established: {session_key}")
         print("-" * 40)
 
-        # ==========================================
-        # PHASE 3: COMMAND LOOP
-        # ==========================================
         print("Commands: LIST, INFO <file>, GETSIZE <file>, QUIT")
         
         while True:

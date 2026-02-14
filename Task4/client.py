@@ -11,7 +11,7 @@ HOST = '127.0.0.1'
 PORT = 8080
 BUFFER_SIZE = 4096
 
-# --- CRYPTO HELPERS ---
+#crypto helper functions
 def derive_aes_key(session_key):
     if isinstance(session_key, int):
         session_key = str(session_key)
@@ -46,12 +46,10 @@ def receive_n_bytes(sock, n):
 
 def download_file_encrypted(sock, filename, aes_key, session_key):
     # 1. Receive Initial Response (Encrypted)
-    # We assume the initial status message fits in the buffer
     enc_resp = sock.recv(BUFFER_SIZE)
     try:
         resp = decrypt_data(enc_resp, aes_key).decode()
         
-        # Display Cipher/Plain as requested 
         print(f"[Cipher]: {enc_resp.hex()[:60]}...") # Truncate for display
         print(f"[Plain]:  {resp}")
         
@@ -89,7 +87,7 @@ def download_file_encrypted(sock, filename, aes_key, session_key):
             if mac_bytes is None: break
             received_mac = mac_bytes.decode()
             
-            # 5. Verify MAC First (Encrypt-then-MAC) [cite: 114]
+            # 5. Verify MAC First (Encrypt-then-MAC)
             calc_mac = calculate_mac_encrypted(enc_data, seq_no, session_key)
             
             if calc_mac != received_mac:
@@ -126,7 +124,7 @@ def start_client():
     try:
         client.connect((HOST, PORT))
         
-        # --- PHASE 1: AUTH ---
+        #auth
         client.sendall(username.encode())
         nonce = client.recv(BUFFER_SIZE).decode()
         if "AUTH_FAIL" in nonce:
@@ -144,7 +142,7 @@ def start_client():
         
         print("Authentication Successful!")
 
-        # --- PHASE 2: DH KEY ---
+        #DH KEY
         a = secrets.randbelow(P_val - 1) + 1
         A = pow(G_val, a, P_val)
         msg = f"{P_val},{G_val},{A}"
@@ -155,19 +153,19 @@ def start_client():
         session_int = pow(B, a, P_val)
         session_key = str(session_int)
         
-        # Derive AES Key
+        #derive AES key
         aes_key = derive_aes_key(session_key)
         print(f"Session Key Established. AES Key Derived.")
         print("-" * 40)
 
-        # --- PHASE 3: ENCRYPTED COMMANDS ---
+        #Encrypted commands
         print("Commands: LIST, INFO <file>, GETSIZE <file>, GET <file>, QUIT")
         
         while True:
             cmd_line = input("[INPUT] ")
             if not cmd_line.strip(): continue
             
-            # Encrypt Command [cite: 103]
+            # Encrypt Command
             enc_cmd = encrypt_data(cmd_line, aes_key)
             client.sendall(enc_cmd)
             

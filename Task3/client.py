@@ -10,14 +10,14 @@ PORT = 8080
 BUFFER_SIZE = 4096
 
 def calculate_mac(data, seq_no, session_key):
-    """Computes MAC for verification."""
+    #Computes MAC for verification
     seq_bytes = str(seq_no).encode('utf-8')
     key_bytes = str(session_key).encode('utf-8')
     payload = data + seq_bytes + key_bytes
     return hashlib.sha256(payload).hexdigest()
 
 def receive_n_bytes(sock, n):
-    """Helper to ensure we get exactly n bytes from TCP stream"""
+    #Helper to ensure we get exactly n bytes from TCP stream
     data = b''
     while len(data) < n:
         packet = sock.recv(n - len(data))
@@ -27,13 +27,7 @@ def receive_n_bytes(sock, n):
     return data
 
 def download_file(sock, filename, session_key):
-    """
-    Receives file chunks, verifies integrity, and writes to disk.
-    """
-    # 1. Check Server Response
-    # The first response is either "FILE NOT AVAILABLE" or "FILE_FOUND <size>"
-    # We peek or just read a small buffer. 
-    # Since server sends strictly formatted packets AFTER this msg, we can just recv.
+    #Receives file chunks, verifies integrity, and writes to disk.
     
     # Wait for the initial status message
     initial_resp = sock.recv(BUFFER_SIZE).decode()
@@ -49,7 +43,7 @@ def download_file(sock, filename, session_key):
     print(f"[OUTPUT] RESPONSE: {initial_resp}")
     print("[INFO] Starting download with Integrity Verification...")
     
-    # Output file name (prepend 'downloaded_' to avoid overwriting source if local)
+    # Output file name
     out_filename = f"downloaded_{filename}"
     
     expected_seq_no = 0
@@ -86,7 +80,7 @@ def download_file(sock, filename, session_key):
 
             
             
-            # 5. Verify Integrity [cite: 90]
+            # 5. Verify Integrity
             # Calculate local MAC
             calculated_mac = calculate_mac(data, seq_no, session_key)
             
@@ -122,7 +116,7 @@ def start_client():
     try:
         client.connect((HOST, PORT))
         
-        # --- PHASE 1: AUTH ---
+        #auth
         client.sendall(username.encode())
         nonce = client.recv(BUFFER_SIZE).decode()
         if "AUTH_FAIL" in nonce:
@@ -140,7 +134,7 @@ def start_client():
         
         print("Authentication Successful!")
 
-        # --- PHASE 2: DH KEY ---
+        #DH KEY
         a = secrets.randbelow(P_val - 1) + 1
         A = pow(G_val, a, P_val)
         msg = f"{P_val},{G_val},{A}"
@@ -154,7 +148,7 @@ def start_client():
         print(f"Session Key Established: {session_key}")
         print("-" * 40)
 
-        # --- PHASE 3: COMMANDS ---
+        #commands
         print("Commands: LIST, INFO <file>, GETSIZE <file>, GET <file>, QUIT")
         
         while True:
@@ -170,7 +164,7 @@ def start_client():
             if cmd == "QUIT":
                 break
             
-            # Task 3: Special handling for GET response
+            #handling for GET response
             if cmd == "GET" and arg:
                 download_file(client, arg, session_key)
             else:

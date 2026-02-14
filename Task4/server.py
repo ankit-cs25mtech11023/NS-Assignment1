@@ -39,7 +39,7 @@ def load_credentials():
                     creds[user] = secret
     return creds
 
-# --- CRYPTO HELPERS [cite: 101, 102] ---
+#crypto helper functions
 def derive_aes_key(session_key):
     """Derives a 128-bit AES key from the session key using SHA-256."""
     # Ensure session_key is bytes
@@ -62,7 +62,7 @@ def encrypt_data(data, aes_key):
     return iv + ciphertext
 
 def decrypt_data(encrypted_data, aes_key):
-    """Decrypts data (expects IV + Ciphertext)."""
+    #Decrypts data (expects IV + Ciphertext)
     iv = encrypted_data[:16]
     ciphertext = encrypted_data[16:]
     cipher = AES.new(aes_key, AES.MODE_CBC, iv)
@@ -70,13 +70,13 @@ def decrypt_data(encrypted_data, aes_key):
     return unpad(padded_data, AES.block_size)
 
 def calculate_mac_encrypted(enc_data, seq_no, session_key):
-    """Calculates MAC = HASH(ENC_DATA || SEQ_NO || SESSION_KEY) [cite: 113]"""
+    #Calculates MAC = HASH(ENC_DATA || SEQ_NO || SESSION_KEY)
     seq_bytes = str(seq_no).encode('utf-8')
     key_bytes = str(session_key).encode('utf-8')
     payload = enc_data + seq_bytes + key_bytes
     return hashlib.sha256(payload).hexdigest()
 
-# --- FILE TRANSFER ---
+#file transfer
 def handle_get_command(client_socket, filename, aes_key, session_key):
     if not os.path.exists(filename):
         # Encrypt the error message
@@ -96,25 +96,22 @@ def handle_get_command(client_socket, filename, aes_key, session_key):
             if not chunk:
                 break
             
-            # 2. Encrypt Chunk [cite: 112]
+            # 2. Encrypt Chunk
             # ENC(DATA) = IV + AES(PAD(DATA))
             enc_chunk = encrypt_data(chunk, aes_key)
             
-            # 3. Calculate MAC [cite: 113]
+            # 3. Calculate MAC
             # MAC = HASH(ENC_DATA || SEQ_NO || SESSION_KEY)
             mac = calculate_mac_encrypted(enc_chunk, seq_no, session_key)
             
-            # 4. Construct Packet 
-            # SEQ_NO (4) + LEN_ENC (4) + ENC_DATA + MAC (64)
-            # We need length of encrypted data because it varies with padding
+            # 4. Construct Packet : SEQ_NO (4) + LEN_ENC (4) + ENC_DATA + MAC (64)
             header = seq_no.to_bytes(4, 'big') + len(enc_chunk).to_bytes(4, 'big')
             packet = header + enc_chunk + mac.encode()
             
             client_socket.sendall(packet)
             seq_no += 1
             
-    # Send EOF Packet
-    # Data length 0 implies end
+    # Send EOF Packet, data length 0 implies end
     end_header = seq_no.to_bytes(4, 'big') + (0).to_bytes(4, 'big')
     # Dummy MAC
     dummy_mac = calculate_mac_encrypted(b"", seq_no, session_key).encode()
@@ -122,7 +119,7 @@ def handle_get_command(client_socket, filename, aes_key, session_key):
     
     return f"File {filename} sent ({file_size} bytes)"
 
-# --- MAIN SERVER LOGIC ---
+#server logic
 def handle_client(client_socket, addr):
     print(f"[NEW CONNECTION] {addr} connected.")
     session_key = None
@@ -130,7 +127,7 @@ def handle_client(client_socket, addr):
     username = None
     
     try:
-        # === PHASE 1: AUTH (Plaintext) ===
+        #auth
         username = client_socket.recv(BUFFER_SIZE).decode().strip()
         
         with auth_lock:
@@ -169,7 +166,7 @@ def handle_client(client_socket, addr):
             client_socket.close()
             return
 
-        # === PHASE 2: DH EXCHANGE (Plaintext) ===
+        #DH exhange
         dh_data = client_socket.recv(BUFFER_SIZE).decode().strip()
         P_str, G_str, A_str = dh_data.split(',')
         P, G, A = int(P_str), int(G_str), int(A_str)
@@ -185,12 +182,9 @@ def handle_client(client_socket, addr):
         client_socket.sendall(str(B).encode())
         print(f"[SECURE] Session Key established for {username}. Switching to AES.")
 
-        # === PHASE 3: ENCRYPTED COMMANDS [cite: 99] ===
+        #encrypted commands
         while True:
             # 1. Receive Encrypted Command
-            # First, read generic buffer (assuming command fits in one packet)
-            # In a real streaming protocol, we'd send length headers. 
-            # For this assignment, we assume simple commands fit in BUFFER_SIZE
             enc_data = client_socket.recv(BUFFER_SIZE)
             if not enc_data: break
             
@@ -230,7 +224,7 @@ def handle_client(client_socket, addr):
                 client_socket.sendall(encrypt_data(response, aes_key))
 
             elif cmd == "GET" and arg:
-                # Handle File Download (Special Packet Loop)
+                # Handle File Download
                 response = handle_get_command(client_socket, arg, aes_key, session_key)
 
             elif cmd == "QUIT":
